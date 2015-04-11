@@ -1,4 +1,4 @@
-# beam-chatty
+# beam-chatty [![](https://badges.gitter.im/MCProHosting/beam.png)](https://gitter.im/MCProHosting/beam-dev)
 
 This is a super basic chat bot framework for Beam, built to serve as a basic example of a Beam chat bot.
 
