@@ -3,11 +3,9 @@ class RequestError(Exception):
         self.response = response
 
 
-# This error is thrown when we fail to connect to the Beam server.
 class NotAuthenticatedError(RequestError):
-    pass
+    """Failed to connect to the Beam server."""
 
 
-# Thrown if there's an error and we don't know why!
 class UnknownError(RequestError):
     pass
