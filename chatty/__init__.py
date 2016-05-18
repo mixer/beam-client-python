@@ -1,6 +1,6 @@
-from .errors import *
 from .connection import Connection
 
-# Helper constructor....
+
 def create(*args, **kwargs):
+    """Helper function for the creation of connections."""
     return Connection(*args, **kwargs)

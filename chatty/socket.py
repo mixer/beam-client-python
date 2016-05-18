@@ -1,77 +1,82 @@
 from .evented import Evented
-from ws4py.client.tornadoclient import TornadoWebSocketClient
-from tornado import ioloop
-import random
-import json
 
-# A ws4py websocket wrapped in an Evented class.
-class EventedWebSocket(TornadoWebSocketClient, Evented):
-    def __init__(self, *args, **kwargs):
-        Evented.__init__(self)
-        TornadoWebSocketClient.__init__(self, *args, **kwargs)
+from tornado.websocket import websocket_connect
+from tornado.ioloop import IOLoop
 
-    def received_message(self, data):
-        self.emit('message', str(data))
-
-    def opened(self):
-        self.emit('opened')
-
-    def closed(self, code, reason=None):
-        self.emit('closed', code, reason)
+from random import randint
+from json import loads, dumps
 
 
-# Handles the Beam socket protocol. Ported directly from Js, not
-# super Pythonic.
 class Socket(Evented):
 
-    def __init__(self, addresses):
-        Evented.__init__(self)
+    packet_id = 0
 
-        self.addressOffset = random.randint(0, len(addresses)-1)
+    def __init__(self, addresses):
+        super(Socket, self).__init__()
+
+        self.connected = False
+        self.ws = None
+
+        self.address_offset = randint(0, len(addresses)-1)
         self.addresses = addresses
-        self.call_id = 0
 
         self._connect()
 
-    def _get_addresss(self):
-        self.addressOffset += 1
-        if self.addressOffset >= len(self.addresses):
-            self.addressOffset = 0
+    def _get_address(self):
+        self.address_offset += 1
+        self.address_offset %= len(self.addresses)
 
-        return self.addresses[self.addressOffset]
+        return self.addresses[self.address_offset]
 
     def _connect(self):
-        address = self._get_addresss() + '/ws'
-        print('Connecting to %s' % address)
+        address = self._get_address()
+        print("Connecting to {}...".format(address))
 
-        self.ws = EventedWebSocket(address, protocols=['http-only', 'chat'])
-        self.ws.connect()
+        websocket_connect(
+            address,
+            callback=self._on_open,
+            on_message_callback=self._parse_packet
+        )
 
-        self.ws.on('opened', lambda *args: self.emit('opened', *args))
-        self.ws.on('closed', self._on_close)
-        self.ws.on('message', self._parsePacket)
+    def _parse_packet(self, packet_str):
+        if packet_str is None:
+            self._on_close(1)
+        else:
+            packet = loads(packet_str)
+            self.emit("message", packet["data"])
 
-    def _parsePacket(self, packet_str):
-        # Todo: more advanced parsing here
-        packet = json.loads(packet_str)
-        self.emit('message', packet['data'])
+    def _on_open(self, future):
+        if future.exception() is None:
+            self.ws = future.result()
+            self.connected = True
+            self.emit("opened")
+        else:
+            print("Unable to connect to the socket.")
+            print("Retrying in 1 second.")
+
+            self.connected = False
+
+            IOLoop.instance().call_later(1, self._connect)
 
     def _on_close(self, code, reason=None):
-        print('Socket closed [Code %s] %s' % (code, reason))
-        print('Reestablishing the socket in 1 second.')
-        self.emit('closed', code, reason)
+        print("Socket closed.")
+        print("Reestablishing the socket in 1 second.")
+        self.connected = False
+        self.emit("closed")
 
-        ioloop.IOLoop.instance().call_later(1, self._connect)
+        IOLoop.instance().call_later(1, self._connect)
 
     def send(self, type, *args, **kwargs):
+        if not self.connected:
+            return
+
         packet = {
-            'type': type,
-            'arguments': args,
-            'id': self.call_id
+            "type": type,
+            "arguments": args,
+            "id": self.packet_id
         }
 
         packet.update(kwargs)
-        print(packet)
-        self.ws.send(json.dumps(packet))
-        self.call_id += 1
-
+        print("SEND:", packet)
+        self.ws.write_message(dumps(packet))
+        self.packet_id += 1
