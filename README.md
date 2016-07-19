@@ -19,7 +19,3 @@ vi config.py
 # start the example chatbot
 python example.py
 ```
-
-## License
-
-Public domain: MIT License ([text](https://opensource.org/licenses/MIT))
