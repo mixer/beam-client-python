@@ -11,7 +11,3 @@ To use it, ensure Python 3 is installed on your system. Then:
 - install dependencies (`python setup.py install`)
 - copy `config.example.py` to `config.py` and add your authentication information
 - run the example chatbot (`python example.py`)
-
-## License
-
-Public domain: MIT License ([text](https://opensource.org/licenses/MIT))
