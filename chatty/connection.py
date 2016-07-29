@@ -86,4 +86,3 @@ class Connection(Evented):
     def message(self, msg):
         """Sends a chat message."""
         self.websocket.send("method", msg, method="msg")
-
